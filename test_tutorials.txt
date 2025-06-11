@@ -1,0 +1,157 @@
+import time
+
+import pytest
+from autotest_client.platforms import LaunchControlNew
+from qase.pytest import qase
+
+from new_arch.api.expedition_api import APIExpedition
+from new_arch.common_actions.exp_tutorial_steps import ExpTutorialSteps
+from new_arch.device.device_client import DeviceClient
+from new_arch.models.screenplay.base.screenplay import Screenplay
+from new_arch.models.window.expedition.exp_build import ExpBuildWindow
+from tests.new_arch_tests.expedition.fixtures import standard_exp_settings
+
+
+class TestExpResourceTutorial:
+    @qase.id(17781)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_resource_tutorial_launch(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_run_resource_quest_tutorials()
+        tutorial_steps.run_resource_tutorial_1()
+
+    @qase.id(17784)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_resource_tutorial_text(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.run_all_resource_quest_tutorials()
+
+    @qase.id(17795)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_resource_tutorial_after_background(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_run_resource_quest_tutorials()
+
+        launch_control.driver.background_app(seconds=2)
+        time.sleep(1)
+        tutorial_steps.run_resource_tutorial_1(need_appear=True)
+
+        launch_control.driver.background_app(seconds=2)
+        time.sleep(1)
+        tutorial_steps.run_resource_tutorial_2(need_appear=True)
+
+        launch_control.driver.background_app(seconds=2)
+        time.sleep(1)
+        tutorial_steps.run_resource_tutorial_3(need_appear=True)
+
+    @qase.id(17789)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    @pytest.mark.graphic_check
+    def test_exp_resource_tutorial_graphic_check(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_run_resource_quest_tutorials()
+        device = DeviceClient(launch_control)
+
+        qase.attach(device.get_screenshot())
+        tutorial_steps.run_resource_tutorial_1(need_appear=True)
+        qase.attach(device.get_screenshot())
+        tutorial_steps.run_resource_tutorial_2(need_appear=True)
+        qase.attach(device.get_screenshot())
+        tutorial_steps.run_resource_tutorial_3(need_appear=True)
+
+    @qase.id(17797)
+    @pytest.mark.platform_specific("android")
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_resource_tutorial_back_button(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_run_resource_quest_tutorials()
+
+        launch_control.driver.back()
+        tutorial_steps.run_resource_tutorial_1(need_appear=True)
+
+        launch_control.driver.back()
+        tutorial_steps.run_resource_tutorial_2(need_appear=True)
+
+        launch_control.driver.back()
+        tutorial_steps.run_resource_tutorial_3(need_appear=True)
+
+    @qase.id(17785)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_tutorial_resource_build_launch(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.run_all_build_tutorials(need_appear=True)
+        build_window = ExpBuildWindow(launch_control, validating=True)
+        build_window.build_card.submit()
+        Screenplay(launch_control).complete_screenplays_group_by_skip()
+
+    @qase.id(17788)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_tutorial_resource_build_text(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_tutorial_resource_build()
+        tutorial_steps.run_resource_tutorial_build(need_appear=True)
+
+    @qase.id(17790)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    @pytest.mark.graphic_check
+    def test_exp_tutorial_resource_build_graphic_check(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+        device = DeviceClient(launch_control)
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_tutorial_resource_build()
+        tutorial_steps.run_resource_tutorial_build(need_appear=True)
+        qase.attach(device.get_screenshot())
+        build_window = ExpBuildWindow(launch_control, validating=True)
+        build_window.build_card.submit()
+
+    @qase.id(17796)
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_tutorial_resource_build_background(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_tutorial_resource_build()
+        tutorial_steps.run_resource_tutorial_build(need_appear=True)
+        launch_control.driver.background_app(seconds=2)
+        time.sleep(1)
+        build_window = ExpBuildWindow(launch_control, validating=True)
+        build_window.build_card.submit()
+
+    @qase.id(17798)
+    @pytest.mark.platform_specific("android")
+    @pytest.mark.usefixtures("tutorial_prepare")
+    @pytest.mark.setup_game_settings(standard_exp_settings)
+    def test_exp_tutorial_resource_build_back_button(self, launch_control: LaunchControlNew):
+        APIExpedition(launch_control.api_client).skip_current_tutorial()
+
+        tutorial_steps = ExpTutorialSteps(launch_control)
+        tutorial_steps.prepare_to_check_tutorial_resource_build()
+
+        launch_control.driver.back()
+        tutorial_steps.run_resource_tutorial_build(need_appear=True)
+        build_window = ExpBuildWindow(launch_control, validating=True)
+        build_window.build_card.submit()
