@@ -1,0 +1,255 @@
+import time
+
+from autotest_client.platforms import LaunchControlNew
+
+from models.expedition.exp_config import ExpeditionConfig, tutorial_texts
+from new_arch.api.expedition_api import APIExpedition
+from new_arch.data.enum.screen_position import ScreenPosition
+from new_arch.models.scene.expedition import Expedition
+from new_arch.models.screenplay.base.screenplay import Screenplay
+from new_arch.models.window.expedition.exp_build import ExpBuildWindow
+from new_arch.models.window.expedition.exp_hud import BlockerBubble, ExpTasksIcon
+from new_arch.models.window.expedition.tablet.exp_tablet import ExpTablet
+from new_arch.models.window.expedition.tablet.exp_tablet_tabs import CollectionTab, TaskTab
+from tests.new_arch_tests.features.alpacas.fc24_electric.amplitude_data import event_id
+from utils.test_helper.base_checkers import BaseCheckers as checker
+
+
+class ExpTutorialSteps:
+    def __init__(self, launch_control: LaunchControlNew):
+        self.launch_control = launch_control
+        self.expedition_config = ExpeditionConfig(launch_control)
+        self.api = APIExpedition(launch_control.api_client)
+        self.exp_actions = Expedition(launch_control)
+
+    def check_tutorial_text(self, id_table_text: str):
+        """Compare tutorial bubble text with table text."""
+        assert self.api.wait_for_tutorial_text(), f"Bubble with id didn't appear {id_table_text}"
+        checker.equal(
+            tutorial_texts[id_table_text],
+            self.api.get_tutorial_bubble_text(),
+            "Expected and actual tutorial text different",
+        )
+
+    def run_object_tutorial_1(self):
+        """Execute first object tutorial step."""
+        # FIXME: Delete skip after add tutorials on Resource Quest
+        #  https://app.asana.com/1/656176460444/project/1207099384673821/task/1209978731668718?focus=true
+        self.api.skip_tutorial_by_name("cTUT_Resource_Quest_1")
+        self.api.skip_tutorial_by_name("cTUT_Resource_Quest_2")
+        self.api.skip_tutorial_by_name("cTUT_Resource_Quest_3")
+        self.api.skip_tutorial_by_name("cTUT_Resource_Quest_Build")
+        tutorial_object = self.expedition_config.tutorial_object
+        self.exp_actions.remove_blockers_to_target(target=tutorial_object)
+        assert self.api.wait_for_tutorial(), "Object tutorial 1 didn't appear"
+        self.check_tutorial_text("Tutorial_Cleaning_1")
+        object_pos = self.api.get_object_info(tutorial_object)["screenPoints"][0]
+        self.exp_actions.click_blocker_by_coordinates(**object_pos)
+
+    def run_object_tutorial_2(self):
+        """Execute second object tutorial step."""
+        assert self.api.wait_for_tutorial(), "Object tutorial 2 didn't appear"
+        self.check_tutorial_text("Tutorial_Cleaning_2")
+        BlockerBubble(self.launch_control, validating=True).click()
+
+    def prepare_to_check_run_tablet_tutorial_1(self):
+        """Prepare first tablet tutorial."""
+        self.exp_actions.remove_blockers_to_target(target=self.expedition_config.tutorial_quest_object)
+        self.exp_actions.remove_tutorial_object(self.expedition_config.tutorial_quest_object, is_quest=True)
+        Screenplay(self.launch_control, validating=False).complete_screenplays_group_by_skip()
+
+    def run_tablet_tutorial_1(self, need_appear=True):
+        """Execute first tablet tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Tablet tutorial didn't appear"
+            self.check_tutorial_text("Tutorial_Task_1")
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Tablet tutorial appeared"
+        ExpTasksIcon(self.launch_control, validating=True).click()
+
+    def run_tablet_tutorial_2(self, need_appear=True):
+        """Execute second tablet tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Tablet tutorial 2 didn't appear"
+            self.check_tutorial_text("Tutorial_Task_2")
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Tablet tutorial 2 appeared"
+        TaskTab(self.launch_control, validating=True).quest_btn.click()
+        assert self.api.is_quest_hint_visible(
+            self.expedition_config.tutorial_quest
+        ), f"Hint for {self.expedition_config.tutorial_quest} didn't appear"
+        assert BlockerBubble(
+            self.launch_control, validating=False, uid=self.expedition_config.tutorial_object
+        ), "Quest bubble didn't appear"
+
+    def prepare_to_check_run_side_quest_tutorial_1(self):
+        """Prepare first side quest tutorial."""
+        self.api.set_energy(amount=5000)
+        self.exp_actions.remove_blockers_to_target(self.expedition_config.tutorial_chest, timeout=500)
+
+    def run_side_quest_tutorial_1(self, need_appear=True):
+        """Execute first side quest tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Side tutorial didn't appear"
+            self.check_tutorial_text("Tutorial_Side_Quest_1")
+            BlockerBubble(self.launch_control, validating=True).click()
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Side tutorial appeared"
+
+    def run_side_quest_tutorial_2(self, need_appear=True):
+        """Execute second side quest tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Side tutorial 2 didn't appear"
+            self.check_tutorial_text("Tutorial_Side_Quest_2")
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Side tutorial 2 appeared"
+        ExpTasksIcon(self.launch_control, validating=True).click()
+
+    def run_side_quest_tutorial_3(self, need_appear=True):
+        """Execute third side quest tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Side tutorial 3 didn't appear"
+            self.check_tutorial_text("Tutorial_Side_Quest_3")
+            time.sleep(1)  # Hard tutorial, need wait for full appear
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Side tutorial 3 appeared"
+        ExpTablet(self.launch_control, validating=True).open_collection_tab()
+        time.sleep(1)   # Hard tutorial, need wait for full disappear
+
+    def run_side_quest_tutorial_4(self, need_appear=True):
+        """Execute fourth side quest tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Side tutorial didn't appear"
+            self.check_tutorial_text("Tutorial_Side_Quest_4")
+            CollectionTab(self.launch_control, validating=True).quest_btn.click()
+            assert self.api.is_quest_hint_visible(
+                self.expedition_config.side_quests[0]
+            ), f"Hint for {self.expedition_config.side_quests[0]} didn't appear"
+        else:
+            assert not self.api.wait_for_tutorial(timeout=5), "Side tutorial 4 appeared"
+            ExpTablet(self.launch_control, validating=True).close_if_open()
+
+    def prepare_to_check_run_energy_tutorial_1(self):
+        """Prepare first energy tutorial."""
+        self.api.set_energy(amount=0)
+        Expedition.close_all_game_windows(self.launch_control)
+        ExpTasksIcon(self.launch_control, validating=True).click()
+        TaskTab(self.launch_control, validating=True).quest_btn.click()
+        BlockerBubble(self.launch_control, validating=True).click(disappear_after=False)
+
+    def run_energy_tutorial_1(self, need_appear=True):
+        """Execute first energy tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Energy tutorial 1 didn't appear"
+            self.check_tutorial_text("Tutorial_EndEnergy_1")
+            # Need to wait for tutorial fully appear
+            time.sleep(1)
+            self.api.click_screen(position=ScreenPosition.LEFT_CENTER)
+            assert self.api.wait_for_tutorial_disappeared(), "Energy tutorial didn't disappear"
+        else:
+            assert (
+                not self.api.get_tutorial_bubble_text() == tutorial_texts["Tutorial_EndEnergy_1"]
+            ), "Energy tutorial 1 appeared"
+
+    def run_energy_tutorial_2(self, need_appear=True):
+        """Execute second energy tutorial step."""
+        if need_appear:
+            assert self.api.wait_for_tutorial(), "Energy tutorial 2 didn't appear"
+            self.check_tutorial_text("Tutorial_EndEnergy_2")
+            self.api.click_screen(position=ScreenPosition.LEFT_CENTER)
+            assert self.api.wait_for_tutorial_disappeared(), "Energy tutorial 2 didn't disappear"
+        else:
+            assert (
+                not self.api.get_tutorial_bubble_text() == tutorial_texts["Tutorial_EndEnergy_2"]
+            ), "Energy tutorial 2 appeared"
+
+    def prepare_to_check_run_resource_quest_tutorials(self):
+        """Prepare and run setup for the resource quest tutorial."""
+        self.api.set_energy(amount=500)
+        self.api.skip_current_tutorial()
+        self.api.skip_tutorial_by_name("cTUT_Expedition_Quest")
+        self.exp_actions.remove_blockers_to_target(target=self.expedition_config.tutorial_resource_quest)
+        self.exp_actions.remove_tutorial_object(self.expedition_config.tutorial_resource_quest, is_quest=True)
+        Screenplay(self.launch_control).complete_screenplays_group_by_skip()
+
+    def run_resource_tutorial_1(self, need_appear=True):
+        """Execute first resource tutorial step."""
+        self.check_tutorial_text("Tutorial_ExpBuild_Step_1")
+        assert self.api.wait_for_tutorial(timeout=15), "Resource tutorial step 2 didn't appear"
+        BlockerBubble(self.launch_control, validating=True).click()
+
+    def run_resource_tutorial_2(self, need_appear=True):
+        """Execute second resource tutorial step."""
+        self.check_tutorial_text("Tutorial_ExpBuild_Step_2")
+        assert self.api.wait_for_tutorial(timeout=15), "Resource tutorial step 2 didn't appear"
+        ExpBuildWindow(self.launch_control, validating=True).click_first_available_card()
+
+    def run_resource_tutorial_3(self, need_appear=True):
+        """Execute third resource tutorial step."""
+        self.check_tutorial_text("Tutorial_ExpBuild_Step_3")
+        assert self.api.wait_for_tutorial(timeout=15), "Resource tutorial step 3 didn't appear"
+        ExpBuildWindow(self.launch_control, validating=True).click_first_available_card()
+
+    def prepare_to_check_tutorial_resource_build(self):
+        """Prepare and run setup for the resource quest tutorial."""
+        self.api.set_energy(amount=500)
+        self.api.collect_all_blockers(event_id)
+        self.api.skip_current_tutorial()
+        self.api.skip_tutorial_by_name("cTUT_Expedition_Quest")
+        self.exp_actions.remove_blockers_to_target(target=self.expedition_config.tutorial_resource_quest)
+        self.exp_actions.remove_tutorial_object(self.expedition_config.tutorial_resource_quest, is_quest=True)
+        Screenplay(self.launch_control).complete_screenplays_group_by_skip()
+        BlockerBubble(self.launch_control).click()
+        ExpBuildWindow(self.launch_control, validating=True).click_first_available_card()
+        ExpBuildWindow(self.launch_control, validating=True).click_first_available_card()
+        quest = next((q for q in self.api.get_active_quests_info() if q.get("isBuilder")), None)
+        if not quest:
+            return False
+        target_uid = BlockerBubble(self.launch_control, validating=True).update_uid()
+        info = self.api.get_object_info(target_uid)
+        for p in info.get("screenPoints", []):
+            self.exp_actions.click_blocker_by_coordinates(p["x"], p["y"])
+            time.sleep(1)
+
+    def run_resource_tutorial_build(self, need_appear=True):
+        """Execute build resource tutorial step."""
+        self.check_tutorial_text("Tutorial_ExpBuild_Step_4")
+        assert self.api.wait_for_tutorial(timeout=15), "Resource tutorial step 4 didn't appear"
+        ExpBuildWindow(self.launch_control, validating=True)
+
+    def run_all_object_tutorials(self):
+        """Run all object tutorial steps."""
+        self.run_object_tutorial_1()
+        self.run_object_tutorial_2()
+
+    def run_all_tablet_tutorials(self, need_appear=True):
+        """Run all tablet tutorial steps."""
+        self.prepare_to_check_run_tablet_tutorial_1()
+        self.run_tablet_tutorial_1(need_appear)
+        self.run_tablet_tutorial_2(need_appear)
+
+    def run_all_side_quest_tutorials(self, need_appear=True):
+        """Run all side quest tutorial steps."""
+        self.prepare_to_check_run_side_quest_tutorial_1()
+        self.run_side_quest_tutorial_1(need_appear)
+        self.run_side_quest_tutorial_2(need_appear)
+        self.run_side_quest_tutorial_3(need_appear)
+        self.run_side_quest_tutorial_4(need_appear)
+
+    def run_all_energy_tutorials(self, need_appear=True):
+        """Run all energy tutorial steps."""
+        self.prepare_to_check_run_energy_tutorial_1()
+        self.run_energy_tutorial_1(need_appear)
+        self.run_energy_tutorial_2(need_appear)
+
+    def run_all_resource_quest_tutorials(self, need_appear=True):
+        """Run all resource quest tutorial steps."""
+        self.prepare_to_check_run_resource_quest_tutorials()
+        self.run_resource_tutorial_1(need_appear)
+        self.run_resource_tutorial_2(need_appear)
+        self.run_resource_tutorial_3(need_appear)
+
+    def run_all_build_tutorials(self, need_appear=True):
+        """Run all build tutorial steps."""
+        self.prepare_to_check_tutorial_resource_build()
+        self.run_resource_tutorial_build(need_appear)
